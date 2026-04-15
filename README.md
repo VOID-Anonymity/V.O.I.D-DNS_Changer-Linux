@@ -20,16 +20,20 @@
 1. Склонируйте репозиторий:
    ```
    git clone [https://github.com/VOID-Anonymity/V.O.I.D-DNS_Changer-Linux.git]
+   
    cd V.O.I.D-DNS_Changer-Linux
    ```
   Дайте права на выполнение:
+      
       ```
     chmod +x void_dns.sh
       ```
+      
   Запустите скрипт:
      ```
     ./void_dns.sh
      ```
+     
 ⚠️ Важное примечание
 
 Данный репозиторий предназначен исключительно для Linux-систем.

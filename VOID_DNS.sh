@@ -27,7 +27,7 @@ sleep 1
 clear
 
 center "===========================================" "$CYAN"
-center "=== V.O.I.D™ DNS COMMANDER v3.1 ===" "$CYAN"
+center "=== V.O.I.D™ DNS COMMANDER  ===" "$CYAN"
 center "Лицензия: Манифест Свободной Цитадели" "$CYAN"
 center "===========================================" "$CYAN"
 echo ""

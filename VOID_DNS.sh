@@ -4,7 +4,7 @@
 tput smcup
 clear
 
-# Цвета (Стильный Циан)
+# Цвета
 CYAN='\033[0;36m'
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -27,7 +27,7 @@ sleep 1
 clear
 
 center "===========================================" "$CYAN"
-center "=== V.O.I.D™ DNS COMMANDER  ===" "$CYAN"
+center "=== V.O.I.D™ DNS COMMANDER v2.0 ===" "$CYAN"
 center "Лицензия: Манифест Свободной Цитадели" "$CYAN"
 center "===========================================" "$CYAN"
 echo ""
@@ -39,23 +39,17 @@ case $OS_ID in
     arch)
         center "[ARCH DETECTED]" "$YELLOW"
         echo "Обнаружена система Arch Linux. Вы выбрали путь глубокой настройки."
-        echo "Для стабильности рекомендуется использовать Arch Wiki."
-        echo "Автоматизация V.O.I.D может конфликтовать с вашими ручными правками."
         echo -e "\nНажмите любую клавишу для выхода..."
         read -n 1 -s
         tput rmcup
-        echo -e "${CYAN}Спасибо за использование софта от V.O.I.D™${NC}"
         exit 0
         ;;
     gentoo)
         center "[GENTOO ERROR]" "$RED"
         echo "Ошибка: Обнаружена бесконечная компиляция мира."
-        echo "В Gentoo всё слишком индивидуально для автоматических сценариев."
-        echo "Рекомендуется ручная правка /etc/resolv.conf."
         echo -e "\nНажмите любую клавишу для выхода..."
         read -n 1 -s
         tput rmcup
-        echo -e "${CYAN}Спасибо за использование софта от V.O.I.D™${NC}"
         exit 0
         ;;
     linuxmint|ubuntu|debian)
@@ -70,7 +64,7 @@ esac
 CURRENT_DNS=$(nmcli dev show | grep 'IP4.DNS' | awk '{print $2}' | xargs)
 if [ ! -z "$CURRENT_DNS" ]; then
     center "Текущие DNS в системе: $CURRENT_DNS" "$YELLOW"
-    echo -n "Желаете переназначить DNS на более быстрые? (y/n): "
+    echo -n "Желаете продолжить? (y/n): "
     read -r confirm_change
     if [[ "$confirm_change" != "y" ]]; then 
         tput rmcup
@@ -79,68 +73,63 @@ if [ ! -z "$CURRENT_DNS" ]; then
     fi
 fi
 
-# 3. БАЗА DNS
-DNS_NAMES=("Xbox-DNS" "Malw-Link" "Google" "Cloudflare" "Quad9" "AdGuard")
-DNS_TARGETS=("176.99.11.77" "176.103.130.130" "8.8.8.8" "1.1.1.1" "9.9.9.9" "94.140.14.14")
-
-echo -n "Добавить ваш кастомный DNS для теста? (y/n): "
-read -r add_own
-if [[ "$add_own" == "y" ]]; then
-    read -p "Введите адрес (IP или Домен): " custom_dns
-    if [[ "$custom_dns" =~ [a-zA-Z] ]]; then
-        resolved_ip=$(dig +short "$custom_dns" | head -n1)
-        if [ -z "$resolved_ip" ]; then
-            echo -e "${RED}Ошибка: Домен не может быть разрешен.${NC}"
-        else
-            DNS_NAMES+=("Custom-User")
-            DNS_TARGETS+=("$resolved_ip")
-        fi
-    else
-        DNS_NAMES+=("Custom-User")
-        DNS_TARGETS+=("$custom_dns")
-    fi
-fi
+# 3. РАСШИРЕННАЯ БАЗА DNS
+DNS_NAMES=("Xbox-DNS" "Malw-Link" "Google" "Cloudflare" "Quad9" "AdGuard" "OpenDNS" "G-Core" "Mullvad" "Comodo" "Level3")
+DNS_TARGETS=("176.99.11.77" "176.103.130.130" "8.8.8.8" "1.1.1.1" "9.9.9.9" "94.140.14.14" "208.67.222.222" "95.161.10.10" "194.242.2.2" "8.26.56.26" "4.2.2.1")
 
 # 4. СКАНИРОВАНИЕ
-echo -e "\n${CYAN}[*] Запуск анализа задержки узлов...${NC}"
+echo -e "\n${CYAN}[*] Запуск анализа задержки узлов...${NC}\n"
 best_ping=999
+declare -a results_ping
+
 for i in "${!DNS_NAMES[@]}"; do
-    echo -n "Анализ ${DNS_NAMES[$i]} (${DNS_TARGETS[$i]})... "
+    echo -n -e "[$i] Анализ ${DNS_NAMES[$i]} (${DNS_TARGETS[$i]})... "
     ping_res=$(ping -c 2 -W 1 "${DNS_TARGETS[$i]}" 2>/dev/null | tail -1 | awk '{print $4}' | cut -d '/' -f 2 | cut -d '.' -f 1)
     
     if [[ -z "$ping_res" ]]; then
         echo -e "${RED}НЕДОСТУПЕН${NC}"
+        results_ping[$i]=999
     else
         echo -e "${GREEN}${ping_res}ms${NC}"
+        results_ping[$i]=$ping_res
         if [ "$ping_res" -lt "$best_ping" ]; then
             best_ping=$ping_res
-            best_name=${DNS_NAMES[$i]}
-            best_ip=${DNS_TARGETS[$i]}
+            best_idx=$i
         fi
     fi
 done
 
-# 5. РЕКОМЕНДАЦИЯ
 echo ""
 center "--- РЕКОМЕНДАЦИЯ V.O.I.D ---" "$CYAN"
-center "Оптимальный узел: $best_name ($best_ping ms)" "$GREEN"
+center "Лидер по пингу: ${DNS_NAMES[$best_idx]} ($best_ping ms)" "$GREEN"
 echo ""
 
-read -p "Применить данные настройки? (y/n): " final_y
-if [[ "$final_y" == "y" ]]; then
+# 5. ВЫБОР И ПРИМЕНЕНИЕ
+echo -e "${YELLOW}Введите номер DNS для установки (или 'n' для выхода):${NC}"
+read -p "Выбор [0-$(( ${#DNS_NAMES[@]} - 1 ))]: " user_choice
+
+if [[ "$user_choice" =~ ^[0-9]+$ ]] && [ "$user_choice" -lt "${#DNS_NAMES[@]}" ]; then
+    selected_name=${DNS_NAMES[$user_choice]}
+    selected_ip=${DNS_TARGETS[$user_choice]}
+    
+    echo -e "\nВыбран: $selected_name ($selected_ip)"
     read -p "Выберите протокол (DoH/std): " dns_type
+    
     if [[ "$dns_type" == "doh" || "$dns_type" == "DoH" ]]; then
         center "[ИНСТРУКЦИЯ ПО DOH]" "$YELLOW"
         echo "$DOH_ADVICE"
-        echo "Endpoint: https://$best_ip/dns-query"
-        read -n 1 -s -p "Нажмите любую клавишу после ознакомления..."
+        echo "Endpoint: https://$selected_ip/dns-query"
+        read -n 1 -s -p "Нажмите любую клавишу..."
     else
         INTERFACE=$(nmcli -t -f DEVICE,STATE device | grep ":connected" | cut -d: -f1 | grep -v "lo" | head -n1)
-        sudo nmcli device modify "$INTERFACE" ipv4.dns "$best_ip"
+        sudo nmcli device modify "$INTERFACE" ipv4.dns "$selected_ip"
         sudo nmcli device modify "$INTERFACE" ipv4.ignore-auto-dns yes
-        center "[SUCCESS] Локальные ограничения DNS сняты." "$GREEN"
+        center "[SUCCESS] Настройки применены к $INTERFACE." "$GREEN"
         sleep 2
     fi
+else
+    echo "Отмена операции."
+    sleep 1
 fi
 
 # ЗАВЕРШЕНИЕ
